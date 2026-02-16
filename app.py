@@ -1,59 +1,62 @@
 
-
 from flask import Flask, render_template, request
-import PyPDF2
+import os
 import sqlite3
+import PyPDF2
 import spacy
-nlp = spacy.load("en_core_web_sm")
 from datetime import datetime
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# --------------------------------
+# App Setup
+# --------------------------------
 app = Flask(__name__)
 
-# -------------------------------
-# Skill Database
-# -------------------------------
-skills_db = [
-    "python", "java", "c++", "sql",
-    "flask", "django",
-    "machine learning", "data science",
-    "html", "css", "javascript",
-    "react", "nodejs",
-    "aws", "azure", "docker",
-    "git", "linux"
-]
+# --------------------------------
+# Load spaCy Model
+# --------------------------------
+nlp = spacy.load("en_core_web_sm")
 
-# -------------------------------
-# Initialize Database
-# -------------------------------
-def init_db():
-    conn = sqlite3.connect("database.db")
-    c = conn.cursor()
+# --------------------------------
+# Database Setup
+# --------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT,
-            score REAL,
-            matched TEXT,
-            missing TEXT,
-            date TEXT
-        )
-    """)
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+c = conn.cursor()
 
-    conn.commit()
-    conn.close()
+c.execute("""
+CREATE TABLE IF NOT EXISTS resumes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT,
+    score REAL,
+    timestamp TEXT
+)
+""")
+conn.commit()
 
-init_db()
+# --------------------------------
+# Extract Text From PDF
+# --------------------------------
+def extract_text_from_pdf(file):
+    reader = PyPDF2.PdfReader(file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() or ""
+    return text
 
-# -------------------------------
-# Similarity Calculation
-# -------------------------------
+# --------------------------------
+# Calculate Similarity
+# --------------------------------
 def calculate_similarity(resume_text, job_desc):
     vectorizer = TfidfVectorizer(stop_words='english')
     vectors = vectorizer.fit_transform([resume_text, job_desc])
     similarity = cosine_similarity(vectors[0], vectors[1])
 
-    # NLP Processing
+    # NLP cleaning
     doc_resume = nlp(resume_text.lower())
     doc_job = nlp(job_desc.lower())
 
@@ -66,67 +69,54 @@ def calculate_similarity(resume_text, job_desc):
     matched_skills = resume_words.intersection(job_words)
     missing_skills = job_words.difference(resume_words)
 
-    return round(float(similarity[0][0]) * 100, 2), matched_skills, missing_skills
+    score = round(float(similarity[0][0]) * 100, 2)
 
+    return score, matched_skills, missing_skills
 
-
-# -------------------------------
+# --------------------------------
 # Main Route
-# -------------------------------
-@app.route('/', methods=['GET', 'POST'])
+# --------------------------------
+@app.route("/", methods=["GET", "POST"])
 def index():
-    ranked_results = []
+    if request.method == "POST":
 
-    if request.method == 'POST':
         files = request.files.getlist("resume")
-        job_desc = request.form['job_desc']
+        job_desc = request.form["job_desc"]
+
+        results = []
 
         for file in files:
             if file and file.filename.endswith(".pdf"):
 
-                pdf_reader = PyPDF2.PdfReader(file)
-                resume_text = ""
-
-                for page in pdf_reader.pages:
-                    text = page.extract_text()
-                    if text:
-                        resume_text += text
-
+                resume_text = extract_text_from_pdf(file)
                 score, matched, missing = calculate_similarity(resume_text, job_desc)
 
-                # Save to database
-                conn = sqlite3.connect("database.db")
-                c = conn.cursor()
-
-                c.execute("""
-                    INSERT INTO results (filename, score, matched, missing, date)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (
-                    file.filename,
-                    score,
-                    str(matched),
-                    str(missing),
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                ))
-
+                # Save to DB
+                c.execute(
+                    "INSERT INTO resumes (filename, score, timestamp) VALUES (?, ?, ?)",
+                    (file.filename, score, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                )
                 conn.commit()
-                conn.close()
 
-        # Fetch ranked results (highest score first)
-        conn = sqlite3.connect("database.db")
-        c = conn.cursor()
+                results.append({
+                    "filename": file.filename,
+                    "score": score,
+                    "matched": matched,
+                    "missing": missing
+                })
 
-        c.execute("SELECT filename, score FROM results ORDER BY score DESC")
-        ranked_results = c.fetchall()
+        # Sort highest score first
+        results = sorted(results, key=lambda x: x["score"], reverse=True)
 
-        conn.close()
+        return render_template("index.html", results=results)
 
-    return render_template("index.html", ranked_results=ranked_results)
+    return render_template("index.html")
 
 
-# -------------------------------
+# --------------------------------
 # Run App
-# -------------------------------
+# --------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
