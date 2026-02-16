@@ -1,99 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Resume Screening System</title>
+    <title>AI Resume Screening</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            text-align: center;
+            font-family: Arial;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
             padding: 40px;
         }
 
-        h1 {
-            color: #333;
-        }
-
-        form {
+        .container {
             background: white;
-            padding: 20px;
+            padding: 30px;
             border-radius: 10px;
-            width: 50%;
-            margin: auto;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+            width: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            text-align: center;
         }
 
-        input, textarea {
-            width: 90%;
-            padding: 10px;
+        textarea {
+            width: 100%;
             margin: 10px 0;
+            padding: 8px;
         }
 
         button {
-            padding: 10px 20px;
-            background-color: #007BFF;
+            background: #2a5298;
             color: white;
             border: none;
+            padding: 10px 20px;
             cursor: pointer;
+            border-radius: 5px;
         }
 
         button:hover {
-            background-color: #0056b3;
+            background: #1e3c72;
         }
 
-        table {
-            margin: 30px auto;
-            border-collapse: collapse;
-            width: 60%;
+        .results {
+            margin-top: 30px;
             background: white;
-        }
-
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-
-        th {
-            background-color: #007BFF;
-            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 600px;
         }
     </style>
 </head>
 <body>
 
-    <h1>AI Resume Screening System</h1>
+<div class="container">
+    <h2>AI Resume Screening System</h2>
 
     <form method="POST" enctype="multipart/form-data">
-        <h3>Upload Multiple Resumes (PDF)</h3>
-        <input type="file" name="resume" accept=".pdf" multiple required>
-
-        <h3>Enter Job Description</h3>
-        <textarea name="job_desc" rows="5" placeholder="Enter Job Description here..." required></textarea>
-
-        <br>
+        <input type="file" name="resume" multiple required>
+        <textarea name="job_desc" placeholder="Enter Job Description here..." rows="5" required></textarea>
         <button type="submit">Check Match</button>
     </form>
+</div>
 
-    {% if ranked_results %}
-        <h2>Resume Ranking</h2>
-
-        <table>
-            <tr>
-                <th>Rank</th>
-                <th>Filename</th>
-                <th>Score (%)</th>
-            </tr>
-
-            {% for row in ranked_results %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ row[0] }}</td>
-                <td>{{ row[1] }}</td>
-            </tr>
-            {% endfor %}
-
-        </table>
-    {% endif %}
+{% if results %}
+<div class="results">
+    <h3>Ranking Results</h3>
+    <ul>
+        {% for r in results %}
+            <li>
+                <strong>{{ r.filename }}</strong> — {{ r.score }}%
+                <br>
+                Matched Skills: {{ r.matched }}
+                <br>
+                Missing Skills: {{ r.missing }}
+                <br><br>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
 
 </body>
 </html>
+
