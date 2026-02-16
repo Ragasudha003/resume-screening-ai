@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Resume Screening System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            text-align: center;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 50%;
+            margin: auto;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+
+        input, textarea {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            margin: 30px auto;
+            border-collapse: collapse;
+            width: 60%;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AI Resume Screening System</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+        <h3>Upload Multiple Resumes (PDF)</h3>
+        <input type="file" name="resume" accept=".pdf" multiple required>
+
+        <h3>Enter Job Description</h3>
+        <textarea name="job_desc" rows="5" placeholder="Enter Job Description here..." required></textarea>
+
+        <br>
+        <button type="submit">Check Match</button>
+    </form>
+
+    {% if ranked_results %}
+        <h2>Resume Ranking</h2>
+
+        <table>
+            <tr>
+                <th>Rank</th>
+                <th>Filename</th>
+                <th>Score (%)</th>
+            </tr>
+
+            {% for row in ranked_results %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+            </tr>
+            {% endfor %}
+
+        </table>
+    {% endif %}
+
+</body>
+</html>
